@@ -21,3 +21,11 @@ jobs:
         run: sh -n dist/vistoda-app-bootstrap.sh tests/bootstrap-test.sh
       - name: Bootstrap contract tests
         run: tests/bootstrap-test.sh
+      - name: BusyBox ash contract tests
+        run: >-
+          tar -cf - dist tests |
+          docker run --rm --interactive --network none
+          alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
+          ash -c 'mkdir /work && tar -xf - -C /work && cd /work &&
+          ash -n dist/vistoda-app-bootstrap.sh tests/bootstrap-test.sh &&
+          ash tests/bootstrap-test.sh'
