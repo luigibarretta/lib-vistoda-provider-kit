@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request: {}
+  workflow_dispatch: {}
+
+concurrency:
+  group: vistoda-provider-kit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: sh -n dist/vistoda-app-bootstrap.sh tests/bootstrap-test.sh
+      - name: Bootstrap contract tests
+        run: tests/bootstrap-test.sh
