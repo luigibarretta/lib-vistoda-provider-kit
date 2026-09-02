@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: vistoda-provider-kit-${{ github.ref }}
+  group: lib-vistoda-provider-kit-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

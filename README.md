@@ -1,6 +1,7 @@
-# Vistoda provider kit
+# lib-vistoda-provider-kit
 
-`vistoda-provider-kit` is the canonical, versioned bootstrap layer shared by
+`lib-vistoda-provider-kit` is the canonical repository for the versioned
+bootstrap library shared by
 Vistoda Home Assistant provider apps. It is intentionally smaller than a
 runtime framework: providers keep ownership of their configuration, process
 command, ports, health contract, discovery schema and provider credentials.
