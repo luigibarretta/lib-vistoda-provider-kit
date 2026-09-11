@@ -31,3 +31,9 @@ library at image build or app startup.
 Missing Supervisor credentials, invalid generated tokens, a child that exits
 before readiness, a health timeout or a failed discovery request terminates app
 startup. Existing valid workload tokens are never rotated during normal boot.
+
+The bootstrap retains the child PID throughout `wait`. TERM and INT stop the
+child with a ten-second grace period before forced termination; bootstrap exit
+also cleans up the child. The library owns EXIT/INT/TERM traps after start.
+Supervisor requests have a three-second connection timeout, ten-second request
+timeout and bounded retries. The provider never inherits `SUPERVISOR_TOKEN`.

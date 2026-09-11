@@ -50,10 +50,17 @@ unset SUPERVISOR_TOKEN
 if vistoda_require_supervisor_token 2>/dev/null; then
     fail 'missing Supervisor token was accepted'
 fi
-SUPERVISOR_TOKEN=test-token
+export SUPERVISOR_TOKEN=test-token
 
 discovery_capture="${test_root}/discovery.json"
 curl() {
+    case "$*" in
+        *supervisor/*)
+            case "$*" in
+                *'--connect-timeout 3 --max-time 10 --retry 2 --retry-max-time 30'*) : ;;
+                *) fail 'Supervisor request is not bounded' ;;
+            esac ;;
+    esac
     case "$*" in
         *healthz*) test "${health_ready:-0}" = 1 ;;
         *addons/self/info*) printf '{"data":{"hostname":"vistoda-test"}}' ;;
@@ -80,6 +87,34 @@ vistoda_start_child sh -c 'exit 0'
 vistoda_wait_child
 test -z "${VISTODA_CHILD_PID:-}" || fail 'waited child PID was retained'
 
+vistoda_start_child sh -c 'test -z "${SUPERVISOR_TOKEN+x}"'
+vistoda_wait_child || fail 'Supervisor token leaked into provider environment'
+test "${SUPERVISOR_TOKEN}" = test-token || fail 'bootstrap lost Supervisor token'
+
+# The parent must retain ownership of a provider while blocked in wait.
+sh -c '
+    . "$1"
+    vistoda_start_child sh -c '\''trap "exit 0" TERM; touch "$1"; while :; do sleep 1; done'\'' sh "$2/ready"
+    printf "%s" "$VISTODA_CHILD_PID" >"$2/child-pid"
+    vistoda_wait_child
+' sh "${repository_root}/dist/vistoda-app-bootstrap.sh" "${test_root}" &
+managed_parent=$!
+attempt=0
+until test -f "${test_root}/ready"; do
+    attempt=$((attempt + 1))
+    test "${attempt}" -le 5 || fail 'signal-test provider did not start'
+    sleep 1
+done
+managed_child=$(sed -n '1p' "${test_root}/child-pid")
+kill -TERM "${managed_parent}"
+managed_status=0
+wait "${managed_parent}" || managed_status=$?
+test "${managed_status}" -eq 143 || fail 'TERM exit status was not preserved'
+if kill -0 "${managed_child}" 2>/dev/null; then
+    kill -KILL "${managed_child}" 2>/dev/null || true
+    fail 'TERM left the provider running during wait'
+fi
+
 app_info=$(vistoda_supervisor_app_info)
 test "${app_info}" = '{"data":{"hostname":"vistoda-test"}}' ||
     fail 'Supervisor app info was not returned'
@@ -88,3 +123,4 @@ grep -q '"service":"media_bridge"' "${discovery_capture}" ||
     fail 'discovery payload was not forwarded'
 
 printf 'Vistoda provider bootstrap tests passed.\n'
+cleanup
