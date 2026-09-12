@@ -6,6 +6,10 @@ Vistoda Home Assistant provider apps. It is intentionally smaller than a
 runtime framework: providers keep ownership of their configuration, process
 command, ports, health contract, discovery schema and provider credentials.
 
+New contributors should read the Vistoda family
+[contribution guide](https://github.com/luigibarretta/vistoda-home-assistant/blob/main/CONTRIBUTING.md)
+before changing a consumer or the vendored bootstrap contract.
+
 The kit owns only behavior that Ring, EZVIZ and Blink must implement
 identically:
 
@@ -57,3 +61,8 @@ tests/bootstrap-test.sh
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Maintained by [Luigi Barretta](https://github.com/luigibarretta). You can
+[support Vistoda on Ko-fi](https://ko-fi.com/luigibarretta). The shared
+[disclaimer](https://github.com/luigibarretta/vistoda-home-assistant/blob/main/DISCLAIMER.md)
+applies to Vistoda’s provider interoperability claims.
