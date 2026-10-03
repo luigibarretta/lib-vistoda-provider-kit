@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Enforce the Vistoda 250-line budget on maintained files in CI.
+
 ## 0.1.1 - 2026-09-11
 
 - Preserve the provider PID during wait and forward TERM/INT until it exits.
