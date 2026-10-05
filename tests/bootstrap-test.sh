@@ -91,29 +91,44 @@ vistoda_start_child sh -c 'test -z "${SUPERVISOR_TOKEN+x}"'
 vistoda_wait_child || fail 'Supervisor token leaked into provider environment'
 test "${SUPERVISOR_TOKEN}" = test-token || fail 'bootstrap lost Supervisor token'
 
-# The parent must retain ownership of a provider while blocked in wait.
-sh -c '
-    . "$1"
-    vistoda_start_child sh -c '\''trap "exit 0" TERM; touch "$1"; while :; do sleep 1; done'\'' sh "$2/ready"
-    printf "%s" "$VISTODA_CHILD_PID" >"$2/child-pid"
-    vistoda_wait_child
-' sh "${repository_root}/dist/vistoda-app-bootstrap.sh" "${test_root}" &
-managed_parent=$!
-attempt=0
-until test -f "${test_root}/ready"; do
-    attempt=$((attempt + 1))
-    test "${attempt}" -le 5 || fail 'signal-test provider did not start'
-    sleep 1
-done
-managed_child=$(sed -n '1p' "${test_root}/child-pid")
-kill -TERM "${managed_parent}"
-managed_status=0
-wait "${managed_parent}" || managed_status=$?
-test "${managed_status}" -eq 143 || fail 'TERM exit status was not preserved'
-if kill -0 "${managed_child}" 2>/dev/null; then
-    kill -KILL "${managed_child}" 2>/dev/null || true
-    fail 'TERM left the provider running during wait'
-fi
+# The parent must retain ownership of a provider while blocked in wait, and
+# its TERM exit status must reflect how the provider shut down.
+expect_term_exit() {
+    expected_status=$1
+    provider_script=$2
+    label=$3
+    rm -f "${test_root}/ready" "${test_root}/child-pid"
+    sh -c '
+        . "$1"
+        vistoda_start_child sh -c "$3" sh "$2/ready"
+        printf "%s" "$VISTODA_CHILD_PID" >"$2/child-pid"
+        vistoda_wait_child
+    ' sh "${repository_root}/dist/vistoda-app-bootstrap.sh" "${test_root}" "${provider_script}" &
+    managed_parent=$!
+    attempt=0
+    until test -f "${test_root}/ready"; do
+        attempt=$((attempt + 1))
+        test "${attempt}" -le 5 || fail "${label}: provider did not start"
+        sleep 1
+    done
+    managed_child=$(sed -n '1p' "${test_root}/child-pid")
+    kill -TERM "${managed_parent}"
+    managed_status=0
+    wait "${managed_parent}" || managed_status=$?
+    test "${managed_status}" -eq "${expected_status}" ||
+        fail "${label}: TERM exit status ${managed_status}, expected ${expected_status}"
+    if kill -0 "${managed_child}" 2>/dev/null; then
+        kill -KILL "${managed_child}" 2>/dev/null || true
+        fail "${label}: TERM left the provider running during wait"
+    fi
+}
+
+# A clean shutdown is a stop, not a failure, for Supervisor.
+expect_term_exit 0 'trap "exit 0" TERM; touch "$1"; while :; do sleep 1; done' 'graceful provider'
+expect_term_exit 0 'touch "$1"; exec sleep 30' 'provider killed by the forwarded TERM'
+# A failing or hung shutdown keeps a non-zero status.
+expect_term_exit 3 'trap "exit 3" TERM; touch "$1"; while :; do sleep 1; done' 'provider failing on shutdown'
+expect_term_exit 137 'trap "" TERM; touch "$1"; while :; do sleep 1; done' 'provider ignoring TERM'
 
 app_info=$(vistoda_supervisor_app_info)
 test "${app_info}" = '{"data":{"hostname":"vistoda-test"}}' ||

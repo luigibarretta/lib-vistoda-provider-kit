@@ -35,5 +35,10 @@ startup. Existing valid workload tokens are never rotated during normal boot.
 The bootstrap retains the child PID throughout `wait`. TERM and INT stop the
 child with a ten-second grace period before forced termination; bootstrap exit
 also cleans up the child. The library owns EXIT/INT/TERM traps after start.
+After TERM, the bootstrap exits 0 when the provider shut down cleanly (status
+0, or 143 because the forwarded TERM ended it), so Supervisor records a
+requested stop as stopped, not as an error. A provider that fails during
+shutdown keeps its own status; one killed after the grace period exits 137.
+INT still exits 130.
 Supervisor requests have a three-second connection timeout, ten-second request
 timeout and bounded retries. The provider never inherits `SUPERVISOR_TOKEN`.

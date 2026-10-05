@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.2 - 2026-10-05
 
+- Exit 0 after TERM when the provider shuts down cleanly, so Supervisor shows
+  a requested stop as stopped instead of error; failed or killed shutdowns keep
+  a non-zero status.
 - Enforce the Vistoda 250-line budget on maintained files in CI.
 
 ## 0.1.1 - 2026-09-11
